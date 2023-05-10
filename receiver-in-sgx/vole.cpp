@@ -1,18 +1,9 @@
 #include <iostream>
-#include <vector>
-#include <ctime>
-#include <cmath>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <string>
-#include <sys/time.h>
-#include <netdb.h>
+#include <cstring>
 #include <unistd.h>
 
 //  Common C++ header files
 #include <Vole.h>
-
 
 int main(int argc, char *argv[]){
 
@@ -29,9 +20,7 @@ int main(int argc, char *argv[]){
             --keep A/C only
     --------------------------------------------------------------------------*/
  
-    // Timer sgxBegin = std::chrono::system_clock::now();
-
-    std::cout << "--------------------------------------------------" << endl;
+    std::cout << "-------------------------------------------------------" << endl;
     std::cout << "Interact with TEE ..." << endl;
 
     /*----------- Parse arguments -----------*/
@@ -99,7 +88,6 @@ int main(int argc, char *argv[]){
     /*----------- Socket Transfer -----------*/
 
     Timer socketBegin = std::chrono::system_clock::now();
-
     Timer connectBegin = std::chrono::system_clock::now();
     std::cout << "---[In SGX] Socket Transfering ..." << endl;
 
@@ -148,19 +136,9 @@ int main(int argc, char *argv[]){
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(connectEnd - connectBegin).count() << "ms" << std::endl;
     
 
+    /* ---------------------- share RSA-pk -------------------------- */
 
     //  receive Sender's pk
-
-
-    // Timer receivepkBegin = std::chrono::system_clock::now();
-
-
-    //  re-construct n&e from the recv-buffer
-        //  we have char_buff_n & char_buff_e sequencial in the memory
-        //  so the strlen(char_buff_n) will count (char_buff_e) in
-        //  so once receive, consturct BIGNUM
-
-
     BIGNUM *sender_n = BN_new();
     BIGNUM *sender_e = BN_new();
     char char_buff_sender_n[RSA_BN_BUFF_SIZE];
@@ -175,17 +153,14 @@ int main(int argc, char *argv[]){
         std::cout << "---[In SGX] ---[Error] Receive Sender-pk(n) failed." << endl;
         return -1;
     }
-    // else std::cout << "---[In SGX] ---Receive Sender-pk(n) " << endl;
     BN_hex2bn(&sender_n, char_buff_sender_n);
     
-
     //  receive e 
     if ( (iret = recv(sender_sockfd, char_buff_sender_e, sizeof(char_buff_sender_e), 0)) <= 0 ) // receive e from Sender
     { 
         std::cout << "---[In SGX] ---[Error] Receive Sender-pk(e) failed." << endl;
         return -1;
     }
-    // else std::cout << "---[In SGX] ---Receive Sender-pk(e)" << endl;
     BN_hex2bn(&sender_e, char_buff_sender_e);
 
 
@@ -194,74 +169,50 @@ int main(int argc, char *argv[]){
     RSA_set0_key(sender_pk, BN_dup(sender_n), BN_dup(sender_e), NULL); //  must set NULL here for pk
     
 
-    // Timer receivepkEnd = std::chrono::system_clock::now();
-    // std::cout << "---[In SGX] Socket Transfering done ";
-    // std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(receivepkEnd - receivepkBegin).count() << "ms" << std::endl;
-
-
 
 
     //  send Receiver's pk
-    // Timer sendpkBegin = std::chrono::system_clock::now();
-
     const BIGNUM *receiver_n, *receiver_e;
     RSA_get0_key(receiver_pk, &receiver_n, &receiver_e, NULL);
 
 
-    char *big_n = BN_bn2hex(receiver_n);     // big_n 是一块私有空间，不允许直接访问？
+    char *big_n = BN_bn2hex(receiver_n);     
     char *big_e = BN_bn2hex(receiver_e);
 
     //  send char_n & char_e to Receiver
-
-
     //  send n 
     if ( (iret = send(sender_sockfd, big_n, strlen(big_n), 0)) <= 0 ) // send n to receiver
     { 
         std::cout << "---[In SGX] ---[Error] Send Receiver-pk(n) failed." << endl;
         return -1;
     }
-    // else std::cout << "---[In SGX] ---Send Receiver-pk(n)" << endl;
     
-
     //  send e 
     if ( (iret = send(sender_sockfd, big_e, strlen(big_e), 0)) <= 0 ) // send e to receiver
     { 
         std::cout << "---[In SGX] ---[Error] Send Receiver-pk(e) failed." << endl;
         return -1;
     }
-    // else std::cout << "---[In SGX] ---Send Receiver-pk(e)" << endl;
 
     std::cout << "---[In SGX] --- Share RSA-pk" << endl;
 
 
-    // Timer sendpkEnd = std::chrono::system_clock::now();
-    // std::cout << "Socket Transfer done ";
-    // std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(sendpkEnd - sendpkBegin).count() << "ms" << std::endl;
-    // std::cout << "--------------------------------------------------" << endl;
-
-
-
-
-    // RSA_print_fp(stdout, receiver_pk, 0);
-    // RSA_print_fp(stdout, sender_pk, 0);
+   
 
     /* ---------------------- share random seed -------------------------- */
 
-
+    //  random seed for Receiver
     unsigned char random_seed_receiver[RANDOM_SEED_LENGTH];
     RAND_bytes(random_seed_receiver, sizeof(random_seed_receiver));
 
-
-    // unsigned int *random_seed_receiver_ptr = (unsigned int *)random_seed_receiver;
-    // std::cout << "---[In SGX] Random seed: " << *random_seed_receiver_ptr << endl;
-
-    // srand(time(NULL));
-
+    //  encrypt random seed for Receiver, and send it to Sender
     unsigned char *random_seed_receiver_cipher = (unsigned char *)malloc(RSA_size(sender_pk));
     RSA_public_encrypt(RANDOM_SEED_LENGTH, random_seed_receiver, random_seed_receiver_cipher, sender_pk, RSA_PKCS1_PADDING);
 
-
+    //  receive random seed for Sender, and decrypt it
     unsigned char *random_seed_sender_cipher_buffer = (unsigned char *)malloc(RSA_size(receiver_pk));
+
+
 
     //  send random_seed_receiver_cipher to Sender
     if ( (iret = send(sender_sockfd, random_seed_receiver_cipher, RSA_size(sender_pk), 0)) <= 0 ) // send random_seed_receiver_cipher to Sender
@@ -269,7 +220,6 @@ int main(int argc, char *argv[]){
         std::cout << "---[In SGX] ---[Error] Send random_seed_receiver_cipher failed." << endl;
         return -1;
     }
-    // else std::cout << "---[In SGX] ---Send random_seed_receiver_cipher" << endl;
 
     //  receive random_seed_sender_cipher from Sender
     if ( (iret = recv(sender_sockfd, random_seed_sender_cipher_buffer, RSA_size(receiver_pk), 0)) <= 0 ) // receive random_seed_sender_cipher from Sender
@@ -277,21 +227,16 @@ int main(int argc, char *argv[]){
         std::cout << "---[In SGX] ---[Error] Receive random_seed_sender_cipher failed." << endl;
         return -1;
     }
-    // else std::cout << "---[In SGX] ---Receive random_seed_sender_cipher" << endl;
-
 
     //  decrypt random_seed_sender_cipher with receiver_sk
     unsigned char random_seed_sender[RANDOM_SEED_LENGTH];
     RSA_private_decrypt(RSA_size(receiver_pk), random_seed_sender_cipher_buffer, random_seed_sender, receiver_sk, RSA_PKCS1_PADDING);
 
 
-
-    // std::cout << "---[In SGX] Random seed: " << *random_seed_sender_ptr << endl;
-    // std::cout << "---[In SGX] Random seed: " << *random_seed_receiver_ptr << endl;
+    //  re-compute random seed
     unsigned int *random_seed_sender_ptr = (unsigned int *)random_seed_sender;
     unsigned int *random_seed_receiver_ptr = (unsigned int *)random_seed_receiver;
     unsigned int radom_seed = *random_seed_sender_ptr ^ *random_seed_receiver_ptr;
-    // std::cout << "---[In SGX] Random seed: " << radom_seed << endl;
 
 
     std::cout << "---[In SGX] --- Share random seeds" << endl;
@@ -301,37 +246,20 @@ int main(int argc, char *argv[]){
 
 
     /*----------- Generate A/B/C/Δ -----------*/
-    /*
-            each element in field_B/F:  128 bit <==> 16 Byte
-            
-            for security, padding 11Bytes
-            
-            2048-bit key  ==>  256 Bytes  ==>  245 Bytes available
-            
-            every 240 Bytes(15 elements)
-            
-            (3m+1) elements
-            (3m+1) / 15  *256 Bytes total needed (about 70MB)
-
-
-    //  type for paras
-            RSA                 unsigned char* -> unsigned char*
-            random generator    unsigned char*(RAND_bytes)
-            BIGNUM memory   
+    
+    /*          C = A*Delta + B
 
             A       field B     -> receiver
             C       field F     -> receiver
             B       field F     -> sender
             Δ       field B     -> sender
-
     */
 
 
     std::cout << "---[In SGX] Generate A/B/C/Delta ";
     Timer generateBegin = std::chrono::system_clock::now();
 
-
-    
+    //  buffer parameters
     int bytes_count_A     = FIELD_B_BYTE;
     int bytes_count_B     = FIELD_F_BYTE;
     int bytes_count_C     = FIELD_F_BYTE;    
@@ -349,12 +277,9 @@ int main(int argc, char *argv[]){
     unsigned char *randDelta = (unsigned char *)malloc(bytes_count_Delta_total);
 
 
-
-    int REAL_RAND_BYTE_COUNT_PER_RAND_INT = 2;
     srand(radom_seed);
 
     //  generate A
-
     for(int i = 0; i< bytes_count_A_total; i += REAL_RAND_BYTE_COUNT_PER_RAND_INT){
         unsigned int rand_int = rand();
         memcpy(randA + i, &rand_int, REAL_RAND_BYTE_COUNT_PER_RAND_INT);
@@ -371,12 +296,8 @@ int main(int argc, char *argv[]){
         unsigned int rand_int = rand();
         memcpy(randDelta + i, &rand_int, REAL_RAND_BYTE_COUNT_PER_RAND_INT);
     }
-
-
-
     BIGNUM *Delta = BN_new();
     Delta = BN_bin2bn(randDelta, bytes_count_Delta, NULL);
-
 
     //  generate C
     BIGNUM *tmpA = BN_new();
@@ -390,7 +311,6 @@ int main(int argc, char *argv[]){
         BN_mul(tmpC, tmpA, Delta, ctx);
         BN_add(tmpC, tmpC, tmpB);
         BN_bn2bin(tmpC, tmpC2store);
-        // std::cout << "generate res:" << res << " i = " << i <<  endl;
         memcpy((unsigned char*)(randC + (int)(i*bytes_count_C)), tmpC2store, bytes_count_C);
         BN_CTX_free (ctx);
     }
@@ -399,30 +319,15 @@ int main(int argc, char *argv[]){
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(generateEnd - generateBegin).count() << "ms" << std::endl;
     
 
-
-
-
-
+    //  copy A/C to share buffer
     memcpy(share_buf_A_ptr, randA, bytes_count_A_total);
-    // memcpy(share_buf_B_ptr, randB, bytes_count_B_total);
     memcpy(share_buf_C_ptr, randC, bytes_count_C_total);
-
-
-
-    // for(int i=0; i< 100; i++){
-    //     printf("%02x ", randC[i]);
-    // }
-    // printf("\n");
 
 
     //  close socket
     close(receiver_sockfd);
     close(sender_sockfd);
 
-    return EXIT_SUCCESS;
-
-
-    
     
     /*----------- Done -----------*/
 

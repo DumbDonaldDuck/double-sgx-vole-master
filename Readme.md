@@ -4,8 +4,8 @@ make clean
 
 make
 
-make test_sender                    //  start the sender in one process
+make sender                    //  start the sender in one process/enclave
 
-make test_receiver                  //  start the receiver in another process
+make receiver                  //  start the receiver in another process/enclave
 
 ```

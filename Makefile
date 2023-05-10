@@ -7,7 +7,7 @@ SENDER_FOLDER_SGX 	:= sender-in-sgx
 SENDER_FOLDER 		:= sender
 
 
-.PHONY: all test_receiver test_sender clean
+.PHONY: all receiver sender clean
 
 all: occlum_instance
 
@@ -25,11 +25,11 @@ build_src_sender:
 	@$(MAKE) --no-print-directory -C $(SENDER_FOLDER)
 
 
-test_receiver:
+receiver:
 	@LD_LIBRARY_PATH=$(RECEIVER_FOLDER)/build:$(SGX_SDK)/sdk_libs RUST_BACKTRACE=1 \
 		$(RECEIVER_FOLDER)/build/receiver  
 
-test_sender:
+sender:
 	@LD_LIBRARY_PATH=$(SENDER_FOLDER)/build:$(SGX_SDK)/sdk_libs RUST_BACKTRACE=1 \
 		$(SENDER_FOLDER)/build/sender  
 	

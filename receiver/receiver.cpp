@@ -1,19 +1,11 @@
 #include <iostream>
-#include <string>
-#include <vector>
-#include <cmath>
-#include <cstring>
-#include <stdio.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <netdb.h>
 
 //  Common C++ header files
 #include <Vole.h>
 
 //  for sgx process
 #include <occlum_pal_api.h>
-#include <linux/limits.h>
 
 int main(int argc, char *argv[]) {
 
@@ -33,7 +25,7 @@ int main(int argc, char *argv[]) {
 
     --------------------------------------------------------------------------*/
 
-    std::cout << "--------------------------------------------------" << endl;
+    std::cout << "-------------------------------------------------------" << endl;
     Timer totalBegin = std::chrono::system_clock::now();
 
 
@@ -129,8 +121,7 @@ int main(int argc, char *argv[]) {
     free(buffer_A);
     free(buffer_C);
 
-
-    std::cout << "--------------------------------------------------" << endl;
+    std::cout << "-------------------------------------------------------" << endl;
     Timer totalEnd = std::chrono::system_clock::now();
     std::cout << "Total time: ";
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(totalEnd - totalBegin).count() << "ms" << std::endl;
