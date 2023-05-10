@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
     free(buffer_B);
     free(buffer_Delta);
 
-
+    std::cout << "--------------------------------------------------" << endl;
     Timer totalEnd = std::chrono::system_clock::now();
     std::cout << "Total time: ";
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(totalEnd - totalBegin).count() << "ms" << std::endl;

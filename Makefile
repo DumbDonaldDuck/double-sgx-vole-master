@@ -13,8 +13,8 @@ all: occlum_instance
 
 
 occlum_instance: build_src_receiver build_src_sender
-	bash occlum_build_receiver.sh
-	bash occlum_build_sender.sh
+	@bash occlum_build_receiver.sh
+	@bash occlum_build_sender.sh
 
 build_src_receiver:
 	@$(MAKE) --no-print-directory -C $(RECEIVER_FOLDER_SGX)

@@ -37,6 +37,8 @@ typedef std::chrono::system_clock::time_point Timer;
 #include <openssl/aes.h>
 
 
+//  for random seed 4 bytes
+#define RANDOM_SEED_LENGTH 4
 
 //  for RSA
 
