@@ -1,0 +1,7 @@
+includes:
+  - base.yaml
+targets:
+  - target: /bin
+    copy:
+      - files:
+        - ../sender-in-sgx/build/vole_sender
